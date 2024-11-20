@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>GeoWeb Project</title>
+    <!--    <link rel="stylesheet" href="css/leaflet.css"> -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <!--<link rel="stylesheet" href="css/bootstrap.css"> -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous">
+        </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- <link rel="stylesheet" href="src/plugins/easy-button.css"> -->
+    <link rel="stylesheet" href="src/plugins/L.Control.Sidebar.css">
+    <!--<script src="src/leaflet-src.js"></script> -->
+    <!-- Make sure you put this AFTER Leaflet's CSS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="">
+        </script>
+    <script src="src/jquery-3.7.1.min.js"></script>
+    <!-- <script src="src/plugins/easy-button.js"></script> -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-easybutton@2/src/easy-button.css">
+    <script src="https://cdn.jsdelivr.net/npm/leaflet-easybutton@2/src/easy-button.js"></script>
+    <script src="src/plugins/L.Control.Sidebar.js"></script>
+    <script src="src/plugins/leaflet.ajax.min.js"></script>
+    <!-- several types of basemaps -->
+    <script src="src/plugins/leaflet-providers.js"></script>
+    <!-- clustering -->
+    <link rel="stylesheet" href="src/plugins/MarkerCluster.css">
+    <link rel="stylesheet" href="src/plugins/MarkerCluster.Default.css">
+    <script src="src/plugins/leaflet.markercluster.js"></script>
+    <!--zoom slider-->
+    <link rel="stylesheet" href="src/plugins/L.Control.Zoomslider.css">
+    <script src="src/plugins/L.Control.Zoomslider.js"></script>
+
+    <!--geocoding-->
+    <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/gh/opencagedata/leaflet-opencage-geocoding@v2.0.0/dist/css/L.Control.OpenCageGeocoding.min.css" />
+    <script
+        src="https://cdn.jsdelivr.net/gh/opencagedata/leaflet-opencage-geocoding@v2.0.0/dist/js/L.Control.OpenCageGeocoding.min.js"></script>
+
+    <!--turf-->
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
+
+    <!-- heatmap -->
+    <script src="src/plugins/heatmap.js"></script>
+    <script src="src/plugins/leaflet-heatmap.js"></script>
+
+    <!-- timeline slider -->
+    <script src="src/plugins/leaflet-timeline-slider.js"></script>
+
+    <style>
+        #mapdiv {
+            width: 100%;
+            height: 100vh;
+        }
+
+        #divFilterEagle,
+        #divFilterProject {
+            border: 1px solid;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <div id="side-bar" class="col-12 col-md-3">
+                <div class="container my-4 p-3 border rounded">
+                    <h1 class="text-center">FILTROS
+                    </h1>
+
+                    <!-- Stroke Types Filter -->
+                    <div class="border rounded p-3 mt-3">
+                        <h2 class="h5 text-center">TIPOS DE AVC</h2>
+
+                        <div class="form-group">
+                            <label>INTERVALO</label>
+                            <div class="d-flex align-items-center">
+                                <input id="lower-bound" type="number" class="form-control form-control-sm mr-2"
+                                    value="0.0" min="0" max="100" step="5" style="width: 30%;">
+                                <span class="mx-4" style="font-size: 1.25rem;">&le; TAXA &ge;</span>
+
+                                <input id="upper-bound" type="number" class="form-control form-control-sm ml-2"
+                                    value="100.0" min="0" max="100" step="5" style="width: 30%;">
+                            </div>
+                        </div>
+
+                        <div class="form-group mt-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="stroke-type" id="ischemic"
+                                    value="ischemic" checked>
+                                <label class="form-check-label" for="ischemic">
+                                    ISQUÉMICO
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="stroke-type" id="hemorragic"
+                                    value="hemorragic">
+                                <label class="form-check-label" for="hemorragic">
+                                    HEMORRÁGICO
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Regions Filter -->
+                    <div class="border rounded p-3 mt-3">
+                        <h2 class="h5 text-center">REGIÕES</h2>
+                        <div class="input-group">
+                            <select id="region-select" class="custom-select" style="width: 300px; height: 40px;">
+                                <option value="" selected>Selecione uma região</option>
+                                <option value="Região de Saúde do Centro">Região de Saúde do Centro</option>
+                                <option value="Região de Saúde Norte">Região de Saúde Norte</option>
+                                <option value="Região de Saúde LVT">Região de Saúde LVT</option>
+                                <option value="Região de Saúde do Algarve">Região de Saúde do Algarve</option>
+                                <option value="Região de Saúde do Alentejo">Região de Saúde do Alentejo</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-center mt-4">
+                        <button id="reset-filter" class="btn btn-outline-secondary"
+                            style="padding: 10px 0; font-size: 1.1rem; width: 80%;">
+                            &#x21bb; Repor filtros
+                        </button>
+                    </div>
+                </div>
+
+                <div class="container my-4 p-3 border rounded">
+                    <h1 class="text-center">PROCURA</h1>
+
+                    <!-- Districts Search -->
+                    <div class="border rounded p-3 mt-3">
+                        <h2 class="h5 text-center">DISTRITOS</h2>
+                        <div class="input-group">
+                            <select id="district-select" class="custom-select" style="width: 300px; height: 40px;">
+                                <option value="" selected>Selecione um distrito</option>
+                                <option value="Portalegre">Portalegre</option>
+                                <option value="Santarém">Santarém</option>
+                                <option value="Bragança">Bragança</option>
+                                <option value="Aveiro">Aveiro</option>
+                                <option value="Évora">Évora</option>
+                                <option value="Setúbal">Setúbal</option>
+                                <option value="Viana do Castelo">Viana do Castelo</option>
+                                <option value="Viseu">Viseu</option>
+                                <option value="Leiria">Leiria</option>
+                                <option value="Lisboa">Lisboa</option>
+                                <option value="Porto">Porto</option>
+                                <option value="Vila Real">Vila Real</option>
+                                <option value="Guarda">Guarda</option>
+                                <option value="Beja">Beja</option>
+                                <option value="Braga">Braga</option>
+                                <option value="Castelo Branco">Castelo Branco</option>
+                                <option value="Faro">Faro</option>
+                                <option value="Coimbra">Coimbra</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div id="mapdiv" class="col-12 col-md-12">
+            </div>
+        </div>
+    </div>
+    <script>
+        var mymap;
+        var lyrOSM;
+
+        var ctlSidebar;
+        var ctlLayers;
+        var objBasemaps;
+        var objLayers;
+        var CyclOSM;
+        var lyrTopo;
+        var ctlZoomslider;
+        var ctlSearch;
+
+        var currentYear = 2013;
+        var hemorragicHeatmapLayer = null;
+        var isquemicHeatmapLayer = null;
+
+        var lyrYearlyMortality = null;
+        var mortalityJson = null;
+
+        const FULL_EXTENT_COORDINATES = [40.24599, -8.85498]; // Center coordinates to display Portugal
+        const FULL_EXTENT_ZOOM = 7; // Zoom level to display the whole territory
+
+        $(document).ready(function () {
+
+            mymap = L.map('mapdiv', { center: FULL_EXTENT_COORDINATES, zoom: FULL_EXTENT_ZOOM, zoomControl: false, attributionControl: false });
+
+            lyrOSM = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png');
+            mymap.addLayer(lyrOSM);
+            lyrTopo = L.tileLayer.provider('OpenTopoMap');
+            CyclOSM = L.tileLayer.provider('CyclOSM');
+
+            objBasemaps = {
+                "Open Street Maps": lyrOSM,
+                "Topo Map": lyrTopo,
+                "Cycle OSM": CyclOSM
+            };
+
+            objLayers = {};
+
+            // Maps and layers
+            ctlLayers = L.control.layers(objBasemaps, objLayers).addTo(mymap);
+
+            // All layers are displayed upon launch
+            load_initial_layers();
+
+            // Timeline slider by year
+            L.control.timelineSlider({
+                timelineItems: ["2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020", "2021", "2022", "2023", "2024"],
+                changeMap: getYearlyData
+            }).addTo(mymap);
+
+            // Sidebar
+            ctlSidebar = L.control.sidebar('side-bar').addTo(mymap);
+
+            // Zoom slider
+            ctlZoomslider = L.control.zoomslider({ position: 'topright' }).addTo(mymap);
+
+            // Filter button
+            ctlEasybutton = L.easyButton('<i class="bi bi-funnel"></i>', function () {
+                ctlSidebar.toggle();
+            }).addTo(mymap);
+
+            // Full extent button
+            L.easyButton({
+                states: [{
+                    icon: '<i class="bi bi-globe2"></i>',
+                    onClick: function (btn, map) {
+                        map.setView(FULL_EXTENT_COORDINATES, FULL_EXTENT_ZOOM);
+                    }
+                }],
+                position: 'topright'
+            }).addTo(mymap);
+
+            // Create marker with information about institution, region, hemorragic and ischemic rate. Then save it into DB
+            mymap.on('contextmenu', function (e) {
+                insert_record(e);
+            });
+        });
+
+        
+        // Pass this function to the timeline slider to fetch the data correspondent to the selected year
+        function getYearlyData({ label, value, map, exclamation }) {
+            currentYear = parseInt(label);
+            avg_mortality_by_year().done(function (data) {
+                console.log("Successful data retrieval");
+            }).fail(function (error) {
+                console.error("Error: ", error);
+            });
+        }
+
+        // Returns the information for the current year and updates the layers
+        function avg_mortality_by_year() {
+            return $.ajax({
+                url: 'load_mortality_by_year.php', data: { year: currentYear.toString() }, method: 'GET',
+                dataType: 'json',
+                success: function (response) {
+                    mortalityJson = response;
+                    updateMortalityData(response);
+                    updateHeatmapData(true, response);
+                    updateHeatmapData(false, response);
+                },
+                error: function (xhr, status, error) {
+                    alert("ERROR:" + error);
+                }
+            });
+        }
+
+        // Handles the logic for the institution layer
+        function updateMortalityData(data) {
+            const isEnabled = lyrYearlyMortality && mymap.hasLayer(lyrYearlyMortality);
+
+            if (lyrYearlyMortality) {
+                ctlLayers.removeLayer(lyrYearlyMortality);
+                lyrYearlyMortality.remove();
+            }
+
+            lyrYearlyMortality = L.geoJson(data.features, {
+                onEachFeature: function (feature, layer) {
+                    const latitude = feature.geometry.coordinates[1];
+                    const longitude = feature.geometry.coordinates[0];
+
+                    const content = `
+                        <div class="popup-content" style="font-family: Arial, sans-serif; font-size: 0.9rem; line-height: 1.5;">
+                            <h4 style="margin: 10px 0 0 0;">Instituição</h4>
+                            <input id="institution" value="${feature.properties.instituicao}" style="margin: 0; width: 100%;"/>
+
+                            <h4 style="margin: 10px 0 0 0;">Região</h4>
+                            <input id="region" value="${feature.properties.regiao}" style="margin: 0; width: 100%;"/>
+
+                            <h4 style="margin: 10px 0 0 0;">Taxa Mortalidade AVC Hemorrágico 30 dias</h4>
+                            <input type="number" min="0" max="100" step="0.01" id="hemorragic" value="${parseFloat(feature.properties.avg_mortalidade_hemorragica).toFixed(2)}" style="margin: 0; width: 80%;"/> %
+
+                            <h4 style="margin: 10px 0 0 0;">Taxa Mortalidade AVC Isquémico 30 dias</h4>
+                            <input type="number" min="0" max="100" step="0.01" id="ischemic" value="${parseFloat(feature.properties.avg_mortalidade_isquemica).toFixed(2)}" style="margin: 0; width: 80%;"/> %
+
+                            <div style="display: flex; justify-content: center; gap: 10px; margin-top: 15px;">
+                                <!-- Edit button -->
+                                <button onclick="editRecord(${latitude}, ${longitude})" style="border: 2px solid black; background: white; border-radius: 5px; padding: 8px; cursor: pointer;">
+                                    <i class="bi bi-pencil-square" style="font-size: 1rem; color: black;"></i>
+                                </button>
+                                <!-- Delete button -->
+                                <button onclick="deleteRecord(${latitude}, ${longitude})" style="border: 2px solid red; background: white; border-radius: 5px; padding: 8px; cursor: pointer;">
+                                    <i class="bi bi-trash3" style="font-size: 1rem; color: red;"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    const popup = L.popup().setContent(content);
+                    layer.bindPopup(popup);
+                },
+                filter: combinedFilter
+            });
+
+            if (isEnabled) {
+                lyrYearlyMortality.addTo(mymap);
+            }
+            ctlLayers.addOverlay(lyrYearlyMortality, "Instituições");
+        }
+
+        // Handles the logic for the heatmap layers
+        function updateHeatmapData(is_hemorragic, data) {
+            const isEnabled = (is_hemorragic ? hemorragicHeatmapLayer : isquemicHeatmapLayer) && mymap.hasLayer((is_hemorragic ? hemorragicHeatmapLayer : isquemicHeatmapLayer));
+
+            if ((is_hemorragic ? hemorragicHeatmapLayer : isquemicHeatmapLayer)) {
+                ctlLayers.removeLayer((is_hemorragic ? hemorragicHeatmapLayer : isquemicHeatmapLayer));
+                (is_hemorragic ? hemorragicHeatmapLayer : isquemicHeatmapLayer).remove();
+            }
+
+            const institutionList = data.features.map(feature => {
+                const coords = feature.geometry.coordinates;
+                const avgMortality = is_hemorragic ? feature.properties.avg_mortalidade_hemorragica : feature.properties.avg_mortalidade_isquemica;
+
+                return {
+                    lat: coords[1],
+                    lng: coords[0],
+                    value: avgMortality
+                };
+            });
+
+            const mortalityData = {
+                max: 100,
+                data: institutionList
+            };
+
+            if (!(is_hemorragic ? hemorragicHeatmapLayer : isquemicHeatmapLayer)) {
+                const heatmapConfig = {
+                    radius: 0.2,
+                    maxOpacity: 0.8,
+                    scaleRadius: true,
+                    useLocalExtrema: true,
+                    latField: 'lat',
+                    lngField: 'lng',
+                    valueField: 'value'
+                };
+                if (is_hemorragic) {
+                    hemorragicHeatmapLayer = new HeatmapOverlay(heatmapConfig);
+                } else {
+                    isquemicHeatmapLayer = new HeatmapOverlay(heatmapConfig);
+                }
+            }
+
+            (is_hemorragic ? hemorragicHeatmapLayer : isquemicHeatmapLayer).setData(mortalityData);
+            if (isEnabled) (is_hemorragic ? hemorragicHeatmapLayer : isquemicHeatmapLayer).addTo(mymap);
+
+            ctlLayers.addOverlay((is_hemorragic ? hemorragicHeatmapLayer : isquemicHeatmapLayer), `Heatmap ${(is_hemorragic ? "hemorrágico" : "isquémico")}`);
+        }
+
+        // Loads all layers into the map
+        function load_initial_layers() {
+            avg_mortality_by_year().done(function (data) {
+                lyrYearlyMortality.addTo(mymap);
+                hemorragicHeatmapLayer.addTo(mymap);
+                isquemicHeatmapLayer.addTo(mymap);
+            }).fail(function (error) {
+                alert("Error: ", error);
+            });
+        }
+
+        // Create a marker, fill it with data, persist it onto the database
+        function insert_record(e) {
+            var tempMarker = L.marker(e.latlng).addTo(mymap);
+
+            var form = `
+                <form id="popup-form">
+                    <div class="popup-content" style="font-family: Arial, sans-serif; font-size: 0.9rem; line-height: 1.5;">
+                        <h4 style="margin: 10px 0 0 0;">Instituição</h4>
+                        <input id="institution" style="margin: 0; width: 100%;"/>
+
+                        <h4 style="margin: 10px 0 0 0;">Região</h4>
+                        <input id="region" style="margin: 0; width: 100%;"/>
+
+                        <h4 style="margin: 10px 0 0 0;">Taxa Mortalidade AVC Hemorrágico 30 dias</h4>
+                        <input type="number" min="0" max="100" step="0.01" id="hemorragic" style="margin: 0; width: 80%;"/> %
+
+                        <h4 style="margin: 10px 0 0 0;">Taxa Mortalidade AVC Isquémico 30 dias</h4>
+                        <input type="number" min="0" max="100" step="0.01" id="ischemic" style="margin: 0; width: 80%;"/> %
+
+                        <div style="display: flex; justify-content: center; gap: 10px; margin-top: 15px;">
+                            <!-- Edit button -->
+                            <button type="button" onclick="submitForm()" style="border-radius: 5px; padding: 8px; cursor: pointer;">
+                                <i class="bi bi-hospital" style="font-size: 1rem; color: black;"></i>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            `;
+
+            tempMarker.bindPopup(form).openPopup();
+
+            tempMarker.on('popupclose', function () {
+                tempMarker.remove();
+            });
+
+            window.submitForm = function () {
+                const year = currentYear.toString();
+                const institution = $('#institution').val();
+                const region = $('#region').val();
+                const hemorragic = parseFloat($('#hemorragic').val()).toFixed(2);
+                const ischemic = parseFloat($('#ischemic').val()).toFixed(2);
+                const lat = e.latlng.lat;
+                const lng = e.latlng.lng;
+
+                const postData = {
+                    year: year,
+                    region: region,
+                    institution: institution,
+                    hemorragic: hemorragic,
+                    ischemic: ischemic,
+                    latitude: lat,
+                    longitude: lng
+                };
+
+                $.ajax({
+                    url: 'insert_record.php',
+                    type: 'POST',
+                    data: postData,
+                    dataType: 'json',
+                    success: function (response) {
+                        if (response.status === 'success') {
+                            tempMarker.remove();
+                            avg_mortality_by_year();
+                        } else {
+                            alert("Error: " + response.message);
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        alert("ERROR:" + error);
+                    }
+                });
+            };
+        }
+
+        // Edit an existing marker, persist it onto the database
+        function editRecord(latitude, longitude) {
+            const institution = $('#institution').val();
+            const region = $('#region').val();
+            const hemorragic = parseFloat($('#hemorragic').val()).toFixed(2);
+            const ischemic = parseFloat($('#ischemic').val()).toFixed(2);
+
+            const url = `edit_record.php?year=${encodeURIComponent(currentYear.toString())}&latitude=${encodeURIComponent(latitude)}&longitude=${encodeURIComponent(longitude)}`;
+
+            $.ajax({
+                url: url,
+                type: 'POST',
+                data: {
+                    institution: institution,
+                    region: region,
+                    hemorragic: hemorragic,
+                    ischemic: ischemic
+                },
+                dataType: 'json',
+                success: function (response) {
+                    if (response.status === 'success') {
+                        avg_mortality_by_year();
+                    } else {
+                        alert("Error: " + response.message);
+                    }
+                },
+                error: function (xhr, status, error) {
+                    alert("ERROR:" + error);
+                }
+            });
+        }
+
+        // Delete an existing marker
+        function deleteRecord(latitude, longitude) {
+            $.ajax({
+                url: 'delete_record.php',
+                type: 'POST',
+                data: {
+                    year: currentYear.toString(),
+                    latitude: latitude,
+                    longitude: longitude
+                },
+                dataType: 'json',
+                success: function (response) {
+                    if (response.status === 'success') {
+                        avg_mortality_by_year();
+                    } else {
+                        alert("Error: " + response.message);
+                    }
+                },
+                error: function (xhr, status, error) {
+                    alert("ERROR:" + error);
+                }
+            });
+        }
+
+        // Filter for interval by stroke rate and region as well
+        function combinedFilter(json) {
+            const att = json.properties;
+            const selectedRegion = $('#region-select').val();
+            const lowerBound = parseFloat($('#lower-bound').val());
+            const upperBound = parseFloat($('#upper-bound').val());
+            const selectedStrokeType = $('input[name="stroke-type"]:checked').val();
+
+            const mortalityRate = (selectedStrokeType == 'hemorragic') ? att.avg_mortalidade_hemorragica : att.avg_mortalidade_isquemica;
+
+            const regionMatch = (selectedRegion == "" || att.regiao == selectedRegion);
+            const mortalityWithinInterval = (mortalityRate >= lowerBound) && (mortalityRate <= upperBound);
+
+            return regionMatch && mortalityWithinInterval;
+        }
+
+        $('#region-select, #lower-bound, #upper-bound, input[name="stroke-type"]').change(function () {
+            updateMortalityData(mortalityJson);
+        });
+
+        $("#reset-filter").click(function () {
+            $('#region-select').val("");
+            $('#lower-bound').val(0.0);
+            $('#upper-bound').val(100.0);
+            $('input[name="stroke-type"]').prop('checked', false);
+
+            updateMortalityData(mortalityJson);
+        });
+
+        $('#district-select').change(function () {
+            const selectedDistrict = $('#district-select').val();
+
+            if (selectedDistrict) {
+                $.ajax({
+                    url: `https://api.opencagedata.com/geocode/v1/json`,
+                    method: 'GET',
+                    data: {
+                        q: selectedDistrict + ", Portugal",
+                        key: `33cb5b1839a346fab9a653897ccc507e`,
+                        limit: 1
+                    },
+                    success: function (response) {
+                        if (response.results.length > 0) {
+                            const { lat, lng } = response.results[0].geometry;
+                            // Zoom to district
+                            mymap.setView([lat, lng], 12);
+                        } else {
+                            alert("Could not find district");
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        alert("ERROR: ", error);
+                    }
+                });
+            } else {
+                // Go to full extent
+                mymap.setView(FULL_EXTENT_COORDINATES, FULL_EXTENT_ZOOM);
+            }
+        });
+
+    </script>
+</body>
+
+</html>
