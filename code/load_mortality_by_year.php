@@ -1,35 +1,29 @@
 <?php
-$table='mortalidade';
-$dsn = "pgsql:host=postgresql-geoweb.alwaysdata.net;dbname=geoweb_db;port=5432";
-$opt = [
-PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-PDO::ATTR_EMULATE_PREPARES => false
-];
-$pdo = new PDO($dsn, 'geoweb', '4fqZxzDxjJIpzA9', $opt);
 
-$year=$_GET['year'];
+require_once __DIR__ . '/api.php';
 
-$result = $pdo->query("
-    SELECT 
-        instituicao, regiao,
-        AVG(mortalidade) AS avg_mortalidade_hemorragica,
-        AVG(mortalidade_1) AS avg_mortalidade_isquemica,
-        ST_AsGeoJSON(geom, 5) AS geojson
-    FROM {$table}
-    WHERE tempo LIKE '%{$year}%'
-    GROUP BY instituicao, regiao, geom
-");
+geoweb_endpoint('GET', function (): array {
+    $year = geoweb_year($_GET);
+    $statement = geoweb_db()->prepare(<<<'SQL'
+        SELECT
+            MIN(id) AS marker_id,
+            "Instituicao" AS instituicao,
+            "Regiao" AS regiao,
+            AVG("Mortalidade") AS avg_mortalidade_hemorragica,
+            AVG("Mortalidade_1") AS avg_mortalidade_isquemica,
+            ST_AsGeoJSON(ST_GeometryN(geom, 1), 5) AS geojson
+        FROM public.avc_mortalidade
+        WHERE "Periodo" LIKE :period
+        GROUP BY "Instituicao", "Regiao", geom
+        SQL
+    );
+    $statement->execute(['period' => $year . '%']);
 
-$features=[];
-foreach($result AS $row){
-    unset($row['geom']);
-    $geometry=json_decode($row['geojson']);
-    unset($row['geojson']);
-    $feature=["type"=>"Feature", "geometry"=> $geometry, "properties"=>$row];
-    array_push($features, $feature);
-}
-
-$featureCollection=["type"=>"FeatureCollection", "features"=>$features];
-echo json_encode($featureCollection);
-?>
+    $features = [];
+    foreach ($statement as $row) {
+        $geometry = json_decode($row['geojson'], false, 512, JSON_THROW_ON_ERROR);
+        unset($row['geojson']);
+        $features[] = ['type' => 'Feature', 'geometry' => $geometry, 'properties' => $row];
+    }
+    return ['type' => 'FeatureCollection', 'features' => $features];
+});
