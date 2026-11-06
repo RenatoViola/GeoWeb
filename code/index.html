@@ -37,12 +37,6 @@
     <link rel="stylesheet" href="src/plugins/L.Control.Zoomslider.css">
     <script src="src/plugins/L.Control.Zoomslider.js"></script>
 
-    <!--geocoding-->
-    <link rel="stylesheet"
-        href="https://cdn.jsdelivr.net/gh/opencagedata/leaflet-opencage-geocoding@v2.0.0/dist/css/L.Control.OpenCageGeocoding.min.css" />
-    <script
-        src="https://cdn.jsdelivr.net/gh/opencagedata/leaflet-opencage-geocoding@v2.0.0/dist/js/L.Control.OpenCageGeocoding.min.js"></script>
-
     <!--turf-->
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
 
@@ -272,7 +266,7 @@
                     updateHeatmapData(false, response);
                 },
                 error: function (xhr, status, error) {
-                    alert("ERROR:" + error);
+                    alert(xhr.responseJSON?.message || error);
                 }
             });
         }
@@ -288,16 +282,15 @@
 
             lyrYearlyMortality = L.geoJson(data.features, {
                 onEachFeature: function (feature, layer) {
-                    const latitude = feature.geometry.coordinates[1];
-                    const longitude = feature.geometry.coordinates[0];
+                    const markerId = feature.properties.marker_id;
 
                     const content = `
                         <div class="popup-content" style="font-family: Arial, sans-serif; font-size: 0.9rem; line-height: 1.5;">
                             <h4 style="margin: 10px 0 0 0;">Instituição</h4>
-                            <input id="institution" value="${feature.properties.instituicao}" style="margin: 0; width: 100%;"/>
+                            <input id="institution" style="margin: 0; width: 100%;"/>
 
                             <h4 style="margin: 10px 0 0 0;">Região</h4>
-                            <input id="region" value="${feature.properties.regiao}" style="margin: 0; width: 100%;"/>
+                            <input id="region" style="margin: 0; width: 100%;"/>
 
                             <h4 style="margin: 10px 0 0 0;">Taxa Mortalidade AVC Hemorrágico 30 dias</h4>
                             <input type="number" min="0" max="100" step="0.01" id="hemorragic" value="${parseFloat(feature.properties.avg_mortalidade_hemorragica).toFixed(2)}" style="margin: 0; width: 80%;"/> %
@@ -307,17 +300,20 @@
 
                             <div style="display: flex; justify-content: center; gap: 10px; margin-top: 15px;">
                                 <!-- Edit button -->
-                                <button onclick="editRecord(${latitude}, ${longitude})" style="border: 2px solid black; background: white; border-radius: 5px; padding: 8px; cursor: pointer;">
+                                <button onclick="editRecord(${markerId})" style="border: 2px solid black; background: white; border-radius: 5px; padding: 8px; cursor: pointer;">
                                     <i class="bi bi-pencil-square" style="font-size: 1rem; color: black;"></i>
                                 </button>
                                 <!-- Delete button -->
-                                <button onclick="deleteRecord(${latitude}, ${longitude})" style="border: 2px solid red; background: white; border-radius: 5px; padding: 8px; cursor: pointer;">
+                                <button onclick="deleteRecord(${markerId})" style="border: 2px solid red; background: white; border-radius: 5px; padding: 8px; cursor: pointer;">
                                     <i class="bi bi-trash3" style="font-size: 1rem; color: red;"></i>
                                 </button>
                             </div>
                         </div>
                     `;
-                    const popup = L.popup().setContent(content);
+                    const popupContent = $(content)[0];
+                    popupContent.querySelector('#institution').value = feature.properties.instituicao ?? '';
+                    popupContent.querySelector('#region').value = feature.properties.regiao ?? '';
+                    const popup = L.popup().setContent(popupContent);
                     layer.bindPopup(popup);
                 },
                 filter: combinedFilter
@@ -456,25 +452,25 @@
                         }
                     },
                     error: function (xhr, status, error) {
-                        alert("ERROR:" + error);
+                        alert(xhr.responseJSON?.message || error);
                     }
                 });
             };
         }
 
         // Edit an existing marker, persist it onto the database
-        function editRecord(latitude, longitude) {
+        function editRecord(markerId) {
             const institution = $('#institution').val();
             const region = $('#region').val();
             const hemorragic = parseFloat($('#hemorragic').val()).toFixed(2);
             const ischemic = parseFloat($('#ischemic').val()).toFixed(2);
 
-            const url = `edit_record.php?year=${encodeURIComponent(currentYear.toString())}&latitude=${encodeURIComponent(latitude)}&longitude=${encodeURIComponent(longitude)}`;
-
             $.ajax({
-                url: url,
+                url: 'edit_record.php',
                 type: 'POST',
                 data: {
+                    year: currentYear.toString(),
+                    marker_id: markerId,
                     institution: institution,
                     region: region,
                     hemorragic: hemorragic,
@@ -489,20 +485,19 @@
                     }
                 },
                 error: function (xhr, status, error) {
-                    alert("ERROR:" + error);
+                    alert(xhr.responseJSON?.message || error);
                 }
             });
         }
 
         // Delete an existing marker
-        function deleteRecord(latitude, longitude) {
+        function deleteRecord(markerId) {
             $.ajax({
                 url: 'delete_record.php',
                 type: 'POST',
                 data: {
                     year: currentYear.toString(),
-                    latitude: latitude,
-                    longitude: longitude
+                    marker_id: markerId
                 },
                 dataType: 'json',
                 success: function (response) {
@@ -513,7 +508,7 @@
                     }
                 },
                 error: function (xhr, status, error) {
-                    alert("ERROR:" + error);
+                    alert(xhr.responseJSON?.message || error);
                 }
             });
         }
@@ -548,34 +543,23 @@
         });
 
         $('#district-select').change(function () {
-            const selectedDistrict = $('#district-select').val();
+            const district = this.value;
+            if (!district) {
+                mymap.setView(FULL_EXTENT_COORDINATES, FULL_EXTENT_ZOOM);
+                return;
+            }
 
-            if (selectedDistrict) {
-                $.ajax({
-                    url: `https://api.opencagedata.com/geocode/v1/json`,
-                    method: 'GET',
-                    data: {
-                        q: selectedDistrict + ", Portugal",
-                        key: `33cb5b1839a346fab9a653897ccc507e`,
-                        limit: 1
-                    },
-                    success: function (response) {
-                        if (response.results.length > 0) {
-                            const { lat, lng } = response.results[0].geometry;
-                            // Zoom to district
-                            mymap.setView([lat, lng], 12);
-                        } else {
-                            alert("Could not find district");
-                        }
-                    },
-                    error: function (xhr, status, error) {
-                        alert("ERROR: ", error);
+            $.getJSON('find_district.php', { district })
+                .done(function (response) {
+                    if ($('#district-select').val() === district) {
+                        mymap.fitBounds(response.bounds, { padding: [20, 20] });
+                    }
+                })
+                .fail(function (xhr) {
+                    if ($('#district-select').val() === district) {
+                        alert(xhr.responseJSON?.message || 'Não foi possível localizar o distrito.');
                     }
                 });
-            } else {
-                // Go to full extent
-                mymap.setView(FULL_EXTENT_COORDINATES, FULL_EXTENT_ZOOM);
-            }
         });
 
     </script>
